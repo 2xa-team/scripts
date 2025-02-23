@@ -19,6 +19,12 @@ prompt_if_not_set DOMAIN "Enter your domain: "
 prompt_if_not_set BACKEND_SERVER "Enter backend server URL (e.g., http://hidden-server-ip:port): "
 prompt_if_not_set EMAIL "Enter your email for SSL certificate registration: "
 
+# Ensure BACKEND_SERVER starts with http:// or https://
+if [[ ! "$BACKEND_SERVER" =~ ^https?:// ]]; then
+    BACKEND_SERVER="http://$BACKEND_SERVER"
+    echo "Added 'http://' to BACKEND_SERVER: $BACKEND_SERVER"
+fi
+
 # Update packages and install Nginx
 echo "Updating packages and installing Nginx..."
 sudo apt update
