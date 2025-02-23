@@ -34,9 +34,35 @@ sudo apt install -y nginx || { echo "Failed to install Nginx"; exit 1; }
 echo "Installing Certbot..."
 sudo apt install -y certbot python3-certbot-nginx || { echo "Failed to install Certbot"; exit 1; }
 
-# Configure Nginx on port 8443 (leaving 443 free for VLESS)
+# Initial Nginx config (port 80 only, no SSL yet)
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
-echo "Configuring Nginx for $DOMAIN on port 8443..."
+echo "Configuring Nginx for $DOMAIN on port 80 (initial setup)..."
+sudo tee $NGINX_CONF > /dev/null <<EOL
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location / {
+        return 200 "Temporary config for Certbot.";
+    }
+}
+EOL
+
+# Create symbolic link to sites-enabled
+echo "Creating symbolic link for site configuration..."
+sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
+
+# Validate and reload Nginx (initial setup, container-friendly)
+echo "Validating and reloading Nginx (initial)..."
+sudo nginx -t || { echo "Initial Nginx syntax error"; exit 1; }
+sudo service nginx restart || { echo "Failed to start Nginx"; exit 1; }
+
+# Obtain SSL certificate using Certbot
+echo "Obtaining SSL certificate for $DOMAIN..."
+sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL || { echo "Failed to obtain SSL certificate. Check /var/log/letsencrypt/letsencrypt.log for details."; exit 1; }
+
+# Update Nginx config with SSL on 8443
+echo "Updating Nginx config for $DOMAIN: 80 -> 8443 with SSL..."
 sudo tee $NGINX_CONF > /dev/null <<EOL
 server {
     listen 80;
@@ -47,6 +73,9 @@ server {
 server {
     listen 8443 ssl;
     server_name $DOMAIN;
+
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
 
     location /sub {
         proxy_pass $BACKEND_SERVER;
@@ -70,16 +99,9 @@ server {
 }
 EOL
 
-# Create symbolic link to sites-enabled
-echo "Creating symbolic link for site configuration..."
-sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
+# Final validation and reload (container-friendly)
+echo "Final validation and reload of Nginx..."
+sudo nginx -t || { echo "Final Nginx syntax error"; exit 1; }
+sudo service nginx restart || { echo "Failed to restart Nginx"; exit 1; }
 
-# Validate Nginx configuration and reload
-echo "Validating and reloading Nginx..."
-sudo nginx -t && sudo systemctl reload nginx || { echo "Nginx configuration error"; exit 1; }
-
-# Obtain and configure SSL certificate using Certbot for port 8443
-echo "Obtaining SSL certificate for $DOMAIN..."
-sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL || { echo "Failed to obtain SSL certificate"; exit 1; }
-
-echo "Setup completed successfully! Nginx runs on 8443, leaving 443 free for VLESS."
+echo "Setup completed successfully! Nginx redirects 80 to 8443, leaving 443 free."
