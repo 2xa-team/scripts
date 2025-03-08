@@ -60,14 +60,24 @@ EOF
 }
 
 # Function to backup folder
-backup_folder() {
-    log "Creating backup of folder $SOURCE_DIR..."
+backup_folders() {
+    log "Creating backup of folder $MARZBAN_DB_FOLDER..."
     mkdir -p "$BACKUP_DIR"
-    cp -r "$SOURCE_DIR" "$BACKUP_DIR/marzban_${TIMESTAMP}"
+    cp -r "$MARZBAN_DB_FOLDER" "$BACKUP_DIR/marzban_db_${TIMESTAMP}"
     if [ $? -eq 0 ]; then
-        log "Folder backup successfully created."
+        log "Marzban db folder backup successfully created."
     else
-        log "Error while copying folder."
+        log "Error while copying marzban db folder."
+        exit 1
+    fi
+
+    log "Creating backup of folder $MARZBAN_ENV_FOLDER..."
+    mkdir -p "$BACKUP_DIR"
+    cp -r "$MARZBAN_ENV_FOLDER" "$BACKUP_DIR/marzban_env_${TIMESTAMP}"
+    if [ $? -eq 0 ]; then
+        log "Marzban env folder backup successfully created."
+    else
+        log "Error while copying marzban env folder."
         exit 1
     fi
 }
@@ -87,7 +97,7 @@ backup_postgres() {
 # Function to archive backups
 archive_backups() {
     log "Archiving backups into $ARCHIVE_NAME..."
-    tar -czf "$BACKUP_DIR/$ARCHIVE_NAME" -C "$BACKUP_DIR" "marzban_${TIMESTAMP}" "pg_backup_${TIMESTAMP}.sql"
+    tar -czf "$BACKUP_DIR/$ARCHIVE_NAME" -C "$BACKUP_DIR" "marzban_db_${TIMESTAMP}" "marzban_env_${TIMESTAMP}" "pg_backup_${TIMESTAMP}.sql"
     if [ $? -eq 0 ]; then
         log "Archive successfully created."
     else
@@ -117,10 +127,11 @@ send_to_telegram() {
 <b>Encrypted Backup Saved:</b>
 📅 <b>Time:</b> $CURRENT_DATE
 💻 <b>Server:</b> $SERVER_NAME
-📁 <b>Folder:</b> $SOURCE_DIR
+📁 <b>DB folder:</b> $MARZBAN_DB_FOLDER
+📁 <b>ENV folder:</b> $MARZBAN_ENV_FOLDER
 📸 <b>Database:</b> $PG_DB
 📎 <b>Encrypted Archive:</b> $ENCRYPTED_ARCHIVE_NAME
-🔒 <b>Note:</b> Use for decrypt: <code>sudo gpg --decrypt --output backup.tar.gz FILENAME</code>"
+🔒 <b>Note:</b> Use for decrypt: <code>sudo gpg --decrypt --output $ARCHIVE_NAME $ENCRYPTED_ARCHIVE_NAME</code>"
 
     # Send encrypted archive with caption
     curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument" \
@@ -192,7 +203,7 @@ remove_cron() {
 # Main backup process
 run_backup() {
     log "Starting backup process..."
-    backup_folder
+    backup_folders
     backup_postgres
     archive_backups
     encrypt_archive
