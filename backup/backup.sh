@@ -14,6 +14,7 @@ fi
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 BACKUP_NAME="backup_${TIMESTAMP}"
 ARCHIVE_NAME="${BACKUP_NAME}.tar.gz"
+ENCRYPTED_ARCHIVE_NAME="${ARCHIVE_NAME}.gpg"
 SCRIPT_PATH=$(realpath "$0")
 CRON_JOB="bash $SCRIPT_PATH --manual-backup"
 
@@ -27,7 +28,7 @@ log() {
 }
 
 # Check dependencies
-for cmd in tar curl docker crontab; do
+for cmd in tar curl docker crontab gpg; do
     if ! command -v "$cmd" &> /dev/null; then
         log "Error: $cmd is not installed. Please install it and try again."
         exit 1
@@ -48,7 +49,8 @@ Options:
 
 Description:
   This script creates backups of a specified folder and PostgreSQL database in a Docker container,
-  archives them, and sends the result to a Telegram chat. It also supports cron scheduling.
+  archives them, encrypts the archive with GPG symmetric encryption (AES-256), and sends the result to a Telegram chat.
+  It also supports cron scheduling for automation.
 
 Examples:
   $0 --add-cron "0 0 * * *"   # Schedule daily backups at midnight
@@ -94,28 +96,41 @@ archive_backups() {
     fi
 }
 
-# Function to send archive and message to Telegram
+# Function to encrypt archive with GPG symmetric encryption
+encrypt_archive() {
+    log "Encrypting archive $ARCHIVE_NAME with GPG symmetric encryption..."
+    gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "$GPG_PASSPHRASE" -o "$BACKUP_DIR/$ENCRYPTED_ARCHIVE_NAME" "$BACKUP_DIR/$ARCHIVE_NAME"
+    if [ $? -eq 0 ]; then
+        log "Archive successfully encrypted as $ENCRYPTED_ARCHIVE_NAME."
+    else
+        log "Error while encrypting archive."
+        exit 1
+    fi
+}
+
+# Function to send encrypted archive and message to Telegram
 send_to_telegram() {
-    log "Sending archive with caption to Telegram..."
+    log "Sending encrypted archive with caption to Telegram..."
 
     # Formatted message in HTML
     MESSAGE="
-<b>📦 Backup Information</b>
+<b>Encrypted Backup Saved:</b>
 📅 <b>Time:</b> $CURRENT_DATE
 💻 <b>Server:</b> $SERVER_NAME
 📁 <b>Folder:</b> $SOURCE_DIR
 📸 <b>Database:</b> $PG_DB
-📎 <b>Archive:</b> $ARCHIVE_NAME"
+📎 <b>Encrypted Archive:</b> $ENCRYPTED_ARCHIVE_NAME
+🔒 <b>Note:</b> Use for decrypt: <code>sudo gpg --decrypt --output backup.tar.gz FILENAME</code>"
 
-    # Send archive with caption
+    # Send encrypted archive with caption
     curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument" \
         -F "chat_id=$TELEGRAM_CHAT_ID" \
-        -F "document=@$BACKUP_DIR/$ARCHIVE_NAME" \
+        -F "document=@$BACKUP_DIR/$ENCRYPTED_ARCHIVE_NAME" \
         -F "caption=$MESSAGE" \
         -F "parse_mode=HTML" > /dev/null
 
     if [ $? -eq 0 ]; then
-        log "Archive with caption successfully sent to Telegram."
+        log "Encrypted archive with caption successfully sent to Telegram."
     else
         log "Error while sending to Telegram."
         exit 1
@@ -125,7 +140,7 @@ send_to_telegram() {
 # Function to clean up temporary files
 cleanup() {
     log "Cleaning up temporary files..."
-    rm -rf "$BACKUP_DIR/marzban_${TIMESTAMP}" "$BACKUP_DIR/pg_backup_${TIMESTAMP}.sql" "$BACKUP_DIR/$ARCHIVE_NAME"
+    rm -rf "$BACKUP_DIR/marzban_${TIMESTAMP}" "$BACKUP_DIR/pg_backup_${TIMESTAMP}.sql" "$BACKUP_DIR/$ARCHIVE_NAME" "$BACKUP_DIR/$ENCRYPTED_ARCHIVE_NAME"
     if [ $? -eq 0 ]; then
         log "Temporary files removed."
     else
@@ -180,6 +195,7 @@ run_backup() {
     backup_folder
     backup_postgres
     archive_backups
+    encrypt_archive
     send_to_telegram
     cleanup
     log "Backup process completed successfully."
