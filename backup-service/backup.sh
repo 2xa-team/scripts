@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# Load environment variables from .env file
-if [ -f .env ]; then
-    set -a
-    source .env
-    set +a
-else
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Error: .env file not found."
-    exit 1
-fi
-
 # Dynamic variables
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 BACKUP_NAME="backup_${TIMESTAMP}"
@@ -17,6 +7,17 @@ ARCHIVE_NAME="${BACKUP_NAME}.tar.gz"
 ENCRYPTED_ARCHIVE_NAME="${ARCHIVE_NAME}.gpg"
 SCRIPT_PATH=$(realpath "$0")
 CRON_JOB="bash $SCRIPT_PATH --manual-backup"
+
+# Load environment variables from .env file in the script's directory
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -a
+    source "$SCRIPT_DIR/.env"
+    set +a
+else
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Error: .env file not found in $SCRIPT_DIR."
+    exit 1
+fi
 
 # Server information
 SERVER_NAME=$(hostname)
