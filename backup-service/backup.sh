@@ -130,7 +130,7 @@ send_to_telegram() {
 💻 <b>Server:</b> $SERVER_NAME
 📁 <b>Marzban DB folder:</b> $MARZBAN_DB_FOLDER
 📁 <b>Marzban ENV folder:</b> $MARZBAN_ENV_FOLDER
-📁 <b>Backup service folder:</b> $MARZBAN_ENV_FOLDER
+📁 <b>Backup service folder:</b> $SCRIPT_DIR
 📸 <b>Database:</b> $PG_DB
 📎 <b>Encrypted Archive:</b> $ENCRYPTED_ARCHIVE_NAME
 🔒 <b>Note:</b> Use for decrypt: <code>sudo gpg --decrypt --output $ARCHIVE_NAME $ENCRYPTED_ARCHIVE_NAME</code>"
