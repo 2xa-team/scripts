@@ -81,6 +81,16 @@ backup_folders() {
         log "Error while copying marzban env folder."
         exit 1
     fi
+
+    log "Creating backup of file $TGBOT_ENV_FILE..."
+    mkdir -p "$BACKUP_DIR"
+    cp "$TGBOT_ENV_FILE" "$BACKUP_DIR/tgbot_env_${TIMESTAMP}"
+    if [ $? -eq 0 ]; then
+        log "Tgbot env file backup successfully created."
+    else
+        log "Error while copying tgbot env file."
+        exit 1
+    fi
 }
 
 # Function to backup PostgreSQL database
