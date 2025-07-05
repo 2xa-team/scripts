@@ -11,8 +11,11 @@ cd "$REPO_DIR"
 
 git init
 git remote add origin "$REPO_URL"
+git config core.sparseCheckout true
+git config core.sparseCheckoutCone true
+git fetch origin "$BRANCH"
 git sparse-checkout init --cone
 git sparse-checkout set $FILES
-git pull origin "$BRANCH"
+git checkout "$BRANCH"
 
 echo "✅ Files $FILES uploaded in $(pwd)"
