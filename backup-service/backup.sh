@@ -109,7 +109,7 @@ backup_postgres() {
 # Function to archive backups
 archive_backups() {
     log "Archiving backups into $ARCHIVE_NAME..."
-    tar -czf "$BACKUP_DIR/$ARCHIVE_NAME" -C "$BACKUP_DIR" "marzban_db_${TIMESTAMP}" "marzban_env_${TIMESTAMP}" "pg_backup_${TIMESTAMP}.sql"
+    tar -czf "$BACKUP_DIR/$ARCHIVE_NAME" -C "$BACKUP_DIR" "marzban_db_${TIMESTAMP}" "marzban_env_${TIMESTAMP}" "tgbot_env_${TIMESTAMP}.env" "pg_backup_${TIMESTAMP}.sql"
     if [ $? -eq 0 ]; then
         log "Archive successfully created."
     else
