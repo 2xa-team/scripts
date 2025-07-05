@@ -82,9 +82,9 @@ backup_folders() {
         exit 1
     fi
 
-    log "Creating backup of file $TGBOT_ENV_FILE..."
+    log "Creating backup of file $TGBOT_ENV_FILE ..."
     mkdir -p "$BACKUP_DIR"
-    cp "$TGBOT_ENV_FILE" "$BACKUP_DIR/tgbot_env_${TIMESTAMP}"
+    cp "$TGBOT_ENV_FILE" "$BACKUP_DIR/tgbot_env_${TIMESTAMP}.env"
     if [ $? -eq 0 ]; then
         log "Tgbot env file backup successfully created."
     else
@@ -96,6 +96,7 @@ backup_folders() {
 # Function to backup PostgreSQL database
 backup_postgres() {
     log "Creating backup of PostgreSQL database from container $DOCKER_CONTAINER..."
+    mkdir -p "$BACKUP_DIR"
     docker exec "$DOCKER_CONTAINER" pg_dump -U "$PG_USER" "$PG_DB" > "$BACKUP_DIR/pg_backup_${TIMESTAMP}.sql"
     if [ $? -eq 0 ]; then
         log "Database backup successfully created."
